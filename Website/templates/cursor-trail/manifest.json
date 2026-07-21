@@ -1,0 +1,14 @@
+{
+  "id": "cursor-trail",
+  "name": "Cursor Trail",
+  "author": "TK291",
+  "version": "1.0.0",
+  "description": "Glowing cursor trail.",
+  "preview": "cursor_halo_preview.png",
+  "entry": "index.html",
+  "tags": [
+    "cursor",
+    "neon",
+    "interactive"
+  ]
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wallpaper Hub</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark"></div>
+          <div>
+            <h1>Wallpaper Hub</h1>
+            <p>Futuristic gallery</p>
+          </div>
+        </div>
+
+        <nav class="menu" aria-label="Wallpaper categories">
+          <button class="menu-item active" data-category="all">All</button>
+          <button class="menu-item" data-category="solid">Solid</button>
+          <button class="menu-item" data-category="live">Live</button>
+          <button class="menu-item" data-category="cursor">Cursor Following</button>
+        </nav>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <h2>Wallpaper Collection</h2>
+            <p>Curated for immersive dark mode setups</p>
+          </div>
+        </header>
+
+        <section id="gallery" class="gallery-grid" aria-label="Wallpaper cards"></section>
+      </main>
+    </div>
+
+    <div id="modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <button id="close-modal" class="modal-close" aria-label="Close details">×</button>
+        <div class="modal-content">
+          <img id="modal-image" class="modal-image" src="" alt="Wallpaper preview" />
+          <div class="modal-body">
+            <p id="modal-type" class="modal-type"></p>
+            <h3 id="modal-title"></h3>
+            <p>Choose how you want to use this wallpaper.</p>
+            <div class="modal-actions">
+              <a id="download-link" href="#" target="_blank" rel="noreferrer">Download</a>
+              <a id="preview-link" href="#" target="_blank" rel="noreferrer">Web Preview</a>
+              <a id="app-link" href="#" target="_blank" rel="noreferrer">Open in App</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
