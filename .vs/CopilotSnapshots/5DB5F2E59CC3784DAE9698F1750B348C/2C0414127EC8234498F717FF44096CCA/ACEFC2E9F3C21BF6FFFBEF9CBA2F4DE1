@@ -1,0 +1,72 @@
+﻿ using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Interop;
+using Microsoft.Web.WebView2.Core;
+
+namespace CursorTrailWallpaper
+{
+    public partial class MainWindow : Window
+    {
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam, uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string lpszClass, string lpszWindow);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+        delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            
+            if (DesignerProperties.GetIsInDesignMode(this))
+                return;
+
+            this.Loaded += MainWindow_Loaded;
+        }
+
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Initialize WebView2
+            await MyWebView.EnsureCoreWebView2Async(null);
+            
+            // Point to your live dashboard URL
+            MyWebView.Source = new Uri("https://tk291008.github.io/my-wallpaper-dashboard/templates/cursor-trail/");
+
+            // Fullscreen primary display
+            this.Left = 0;
+            this.Top = 0;
+            this.Width = SystemParameters.PrimaryScreenWidth;
+            this.Height = SystemParameters.PrimaryScreenHeight;
+
+            // Hook behind desktop icons (WorkerW layer)
+            IntPtr progman = FindWindow("Progman", null);
+            IntPtr result = IntPtr.Zero;
+            
+            SendMessageTimeout(progman, 0x052C, IntPtr.Zero, IntPtr.Zero, 0x0000, 1000, out result);
+
+            IntPtr workerw = IntPtr.Zero;
+            EnumWindows(new EnumWindowsProc((hwnd, lParam) => {
+                IntPtr shell = FindWindowEx(hwnd, IntPtr.Zero, "SHELLDLL_DefView", null);
+                if (shell != IntPtr.Zero) {
+                    workerw = FindWindowEx(IntPtr.Zero, hwnd, "WorkerW", null);
+                }
+                return true;
+            }), IntPtr.Zero);
+
+            IntPtr windowHandle = new WindowInteropHelper(this).Handle;
+            SetParent(windowHandle, workerw);
+        }
+    }
+}

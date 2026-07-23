@@ -1,0 +1,4 @@
+D:\Tharun\WallPaper\App\CursorTrailWallpaper\CursorTrailWallpaper\obj\Debug\net8.0-windows\CursorTrailWallpaper.csproj.AssemblyReference.cache
+D:\Tharun\WallPaper\App\CursorTrailWallpaper\CursorTrailWallpaper\obj\Debug\net8.0-windows\App.g.cs
+D:\Tharun\WallPaper\App\CursorTrailWallpaper\CursorTrailWallpaper\obj\Debug\net8.0-windows\CursorTrailWallpaper_Content.g.cs
+D:\Tharun\WallPaper\App\CursorTrailWallpaper\CursorTrailWallpaper\obj\Debug\net8.0-windows\CursorTrailWallpaper_MarkupCompile.cache
