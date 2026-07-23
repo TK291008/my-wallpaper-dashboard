@@ -1,0 +1,22 @@
+[
+    {
+        "id": 1,
+        "title": "Cursor Halo",
+        "type": "cursor",
+        "category": "Cursor Following",
+        "author": "Tharun",
+        "preview": "templates/cursor-trail/index.html",
+        "download": "downloads/cursor_trail_lively.zip",
+        "appLink": "my-wallpaper-app://open?id=3"
+    },
+    {
+        "id": 2,
+        "title": "Digital Clock",
+        "type": "live",
+        "category": "Live Engine",
+        "author": "Tharun",
+        "preview": "templates/digital-clock/index.html",
+        "download": "downloads/digital_clock.zip",
+        "appLink": "my-wallpaper-app://open?id=4"
+    }
+]
