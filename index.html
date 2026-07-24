@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wallpaper Hub</title>
@@ -31,10 +32,67 @@
             <h2>Wallpaper Collection</h2>
             <p>Curated for immersive dark mode setups</p>
           </div>
+          <div class="topbar-actions">
+            <div id="current-user-display" class="user-badge">Guest</div>
+            <button id="open-login-btn" class="login-btn" type="button">Switch / Add User</button>
+          </div>
         </header>
 
         <section id="gallery" class="gallery-grid" aria-label="Wallpaper cards"></section>
       </main>
+    </div>
+
+    <div id="login-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-panel auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+        <button id="close-login-modal" class="modal-close" aria-label="Close authentication">×</button>
+        <div class="auth-shell">
+          <h3 id="auth-modal-title">Welcome to Wallpaper Hub</h3>
+          <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+            <button class="auth-tab active" data-tab="signin" type="button">Sign In</button>
+            <button class="auth-tab" data-tab="register" type="button">Register</button>
+          </div>
+
+          <div id="signin-view" class="auth-view active">
+            <form id="signin-form">
+              <label>
+                Username
+                <input id="signin-username" name="signin-username" type="text" required />
+              </label>
+              <label>
+                Password
+                <input id="signin-password" name="signin-password" type="password" required />
+              </label>
+              <button type="submit">Sign In</button>
+            </form>
+            <div id="saved-users-list" class="saved-users"></div>
+          </div>
+
+          <div id="register-view" class="auth-view">
+            <form id="register-form">
+              <label>
+                Username
+                <input id="register-username" name="register-username" type="text" required />
+              </label>
+              <label>
+                Email
+                <input id="register-email" name="register-email" type="email" required />
+              </label>
+              <label>
+                Password
+                <input id="register-password" name="register-password" type="password" required />
+              </label>
+              <button id="send-code-btn" type="button">Send Verification Code</button>
+              <label>
+                Verification Code
+                <input id="register-code" name="register-code" type="text" inputmode="numeric" maxlength="6" required />
+              </label>
+              <button type="submit">Complete Registration</button>
+            </form>
+            <p id="verification-status" class="verification-status">A 6-digit code will be sent to your email.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="modal" class="modal hidden" aria-hidden="true">
@@ -42,7 +100,7 @@
       <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <button id="close-modal" class="modal-close" aria-label="Close details">×</button>
         <div class="modal-content">
-          <img id="modal-image" class="modal-image" src="" alt="Wallpaper preview" />
+          <iframe id="modal-iframe" class="modal-image" title="Wallpaper preview" src=""></iframe>
           <div class="modal-body">
             <p id="modal-type" class="modal-type"></p>
             <h3 id="modal-title"></h3>
