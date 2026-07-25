@@ -9,10 +9,11 @@ const STORAGE_KEYS = {
     currentUser: 'wallpaper-hub-current-user',
 };
 
-const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-const BACKEND_BASE = isLocalHost
-    ? 'http://127.0.0.1:8000'
-    : 'https://2xnjmf88-8000.inc1.devtunnels.ms';
+const BACKEND_BASE =
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8000"
+        : "https://wallpaperhub-api.onrender.com";
 
 // Helper function to turn relative image and file paths into working backend URLs
 function getFullUrl(path) {
