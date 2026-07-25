@@ -6,10 +6,14 @@ import random
 import bcrypt
 import sqlite3
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
 
 app = FastAPI()
 
-# Enable CORS so your frontend script.js can connect
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,8 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Put your NEW Resend API Key here
-resend.api_key = "re_26w9MMVK_8jXW4QP4Da7GYJQfbaPWSf4x"
+# Fetch key safely from .env file
+resend.api_key = os.getenv("RESEND_API_KEY")
 
 DB_FILE = os.path.join(os.path.dirname(__file__), 'Python', 'wallpapers.db')
 
