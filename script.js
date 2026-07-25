@@ -2,26 +2,68 @@ let wallpapers = [];
 let activeCategory = 'all';
 let currentUser = null;
 let pendingVerificationCode = null;
+let openWallpaperModal = null;
 
 const STORAGE_KEYS = {
     users: 'wallpaper-hub-users',
     currentUser: 'wallpaper-hub-current-user',
 };
 
+const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+const BACKEND_BASE = isLocalHost
+    ? 'http://127.0.0.1:8000'
+    : 'https://2xnjmf88-8000.inc1.devtunnels.ms';
+
+// Helper function to turn relative image and file paths into working backend URLs
+function getFullUrl(path) {
+    if (!path) return '#';
+    if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(path)) return path;
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return `${BACKEND_BASE}/${cleanPath}`;
+}
+
+function isRenderablePreview(path) {
+    return !!path && /\.(?:html|htm|jpeg|jpg|gif|png|webp)(?:$|\?)/i.test(path);
+}
+
+function getInteractiveThumbnail(wallpaper) {
+    const previewPath = wallpaper.preview || wallpaper.image || '';
+    if (!previewPath || !previewPath.endsWith('.html')) {
+        return null;
+    }
+
+    const previewFolder = previewPath.substring(0, previewPath.lastIndexOf('/') + 1);
+    const titleSlug = (wallpaper.title || '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const candidates = [
+        `${previewFolder}${titleSlug}_preview.png`,
+        `${previewFolder}preview.png`,
+        `${previewFolder}thumbnail.png`,
+        `${previewFolder}thumb.png`,
+    ];
+    return candidates.find((candidate) => candidate) || null;
+}
+
+const CARD_PLACEHOLDER_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+        <rect width="400" height="250" fill="#111827"/>
+        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="20">No preview available</text>
+    </svg>`
+)}`;
+
 async function initGallery() {
     try {
-        const response = await fetch('wallpapers.json');
+        const response = await fetch(`${getFullUrl('wallpapers')}`);
         const data = await response.json();
         wallpapers = Array.isArray(data) ? data : [];
+        setupPreviewModal();
         renderWallpapers(getFilteredWallpapers());
         setupCategoryFilters();
-        setupPreviewModal();
         await ensureSeedUsers();
         setupAuthModal();
         restoreUserSession();
     } catch (error) {
-        console.error('Error loading wallpapers from wallpapers.json:', error);
-        document.getElementById('gallery').innerHTML = '<p class="empty-state">Unable to load wallpaper data.</p>';
+        console.error('Error loading wallpapers from backend:', error);
+        document.getElementById('gallery').innerHTML = '<p class="empty-state">Unable to load wallpaper data</p>';
     }
 }
 
@@ -48,16 +90,25 @@ function renderWallpapers(items) {
     }
 
     items.forEach((wallpaper) => {
+        const previewCandidate = wallpaper.preview || wallpaper.image || wallpaper.thumbnail || '';
+        const interactiveThumbnail = getInteractiveThumbnail(wallpaper);
+        const hasStaticPreview = /\.(?:jpeg|jpg|gif|png|webp)(?:$|\?)/i;
+        const thumbnailPath = wallpaper.thumbnail || wallpaper.image || interactiveThumbnail || (hasStaticPreview.test(previewCandidate) ? previewCandidate : '') || wallpaper.download || previewCandidate || wallpaper.appLink || '';
+        const thumbnailUrl = thumbnailPath ? getFullUrl(thumbnailPath) : CARD_PLACEHOLDER_SVG;
+
         const card = document.createElement('div');
         card.className = 'wallpaper-card';
         card.innerHTML = `
+            <div class="card-thumbnail" style="width:100%;height:180px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;border-radius:12px;">
+                <img class="card-thumb" src="${thumbnailUrl}" alt="${wallpaper.title || 'Wallpaper preview'}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.onerror=null; this.src='${CARD_PLACEHOLDER_SVG}';" />
+            </div>
             <div class="card-content">
                 <div class="card-meta">
                     <span class="pill">${wallpaper.type || 'Wallpaper'}</span>
                     <span class="pill secondary">${wallpaper.category || 'General'}</span>
                 </div>
                 <h3>${wallpaper.title}</h3>
-                <p class="card-author">By ${wallpaper.author}</p>
+                <p class="card-author">By ${wallpaper.author || 'Unknown'}</p>
                 <div class="stats-row">
                     <span>❤️ ${wallpaper.likes || 0}</span>
                     <span>⬇️ ${wallpaper.installs || 0}</span>
@@ -65,10 +116,22 @@ function renderWallpapers(items) {
                 </div>
                 <div class="card-actions">
                     <button class="btn preview-btn" data-id="${wallpaper.id}" type="button">Preview</button>
-                    <a class="btn secondary-link" href="${wallpaper.download}" target="_blank" rel="noreferrer">Download</a>
+                    <a class="btn secondary-link" href="#" target="_blank" rel="noreferrer">Download</a>
                 </div>
             </div>
         `;
+        const previewButton = card.querySelector(".preview-btn");
+
+        previewButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            window.openWallpaperModal(wallpaper);
+        });
+
+        const downloadLink = card.querySelector('.secondary-link');
+        if (downloadLink) {
+            downloadLink.href = getFullUrl(wallpaper.download || wallpaper.preview || wallpaper.image || '');
+        }
+
         gallery.appendChild(card);
     });
 }
@@ -87,44 +150,111 @@ function setupCategoryFilters() {
 }
 
 function setupPreviewModal() {
-    const modal = document.getElementById('modal');
-    const closeButton = document.getElementById('close-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const modalType = document.getElementById('modal-type');
-    const downloadLink = document.getElementById('download-link');
-    const previewLink = document.getElementById('preview-link');
-    const appLink = document.getElementById('app-link');
-    const iframe = document.getElementById('modal-iframe');
+    const modal = document.getElementById("modal");
+    const backdrop = modal.querySelector(".modal-backdrop");
+    const closeButton = document.getElementById("close-modal");
 
-    const openModal = (wallpaper) => {
-        modalTitle.textContent = wallpaper.title;
-        modalType.textContent = `${wallpaper.type} • ${wallpaper.category}`;
-        downloadLink.href = wallpaper.download;
-        previewLink.href = wallpaper.preview;
-        appLink.href = wallpaper.appLink;
-        iframe.src = wallpaper.preview;
-        modal.classList.remove('hidden');
-        modal.setAttribute('aria-hidden', 'false');
-    };
+    const iframe = document.getElementById("modal-iframe");
+    const modalTitle = document.getElementById("modal-title");
+    const modalType = document.getElementById("modal-type");
 
-    const closeModal = () => {
-        modal.classList.add('hidden');
-        modal.setAttribute('aria-hidden', 'true');
-        iframe.src = '';
-    };
+    const downloadLink = document.getElementById("download-link");
+    const previewLink = document.getElementById("preview-link");
+    const appLink = document.getElementById("app-link");
 
-    closeButton.addEventListener('click', closeModal);
-    modal.querySelector('.modal-backdrop').addEventListener('click', closeModal);
+    function closeModal() {
+        modal.classList.add("hidden");
+        modal.classList.remove("active");
+        modal.setAttribute("aria-hidden", "true");
 
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest('.preview-btn');
-        if (!button) return;
+        iframe.removeAttribute("srcdoc");
+        iframe.src = "about:blank";
+    }
 
-        const wallpaper = wallpapers.find((item) => String(item.id) === button.dataset.id);
-        if (wallpaper) {
-            openModal(wallpaper);
+    function openModal(wallpaper) {
+
+        modalTitle.textContent = wallpaper.title || "";
+        modalType.textContent =
+            `${wallpaper.type || "Wallpaper"} • ${wallpaper.category || ""}`;
+
+        const previewPath =
+            wallpaper.appLink ||
+            wallpaper.preview ||
+            wallpaper.image ||
+            "";
+
+        const url = getFullUrl(previewPath);
+
+        downloadLink.href = getFullUrl(
+            wallpaper.download ||
+            wallpaper.preview ||
+            wallpaper.image ||
+            ""
+        );
+
+        previewLink.href = url;
+        appLink.href = getFullUrl(
+            wallpaper.appLink ||
+            wallpaper.preview ||
+            wallpaper.image ||
+            ""
+        );
+
+        iframe.removeAttribute("srcdoc");
+
+        if (/\.(html?|php)$/i.test(previewPath)) {
+
+            iframe.src = url;
+
+        } else if (/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(previewPath)) {
+
+            iframe.srcdoc = `
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html,body{
+margin:0;
+height:100%;
+display:flex;
+align-items:center;
+justify-content:center;
+background:#111;
+overflow:hidden;
+}
+img{
+max-width:100%;
+max-height:100%;
+object-fit:contain;
+}
+</style>
+</head>
+<body>
+<img src="${url}">
+</body>
+</html>
+`;
+
+        } else {
+
+            iframe.src = url;
+
         }
+
+        modal.classList.remove("hidden");
+        modal.classList.add("active");
+        modal.setAttribute("aria-hidden", "false");
+    }
+
+    closeButton.addEventListener("click", closeModal);
+
+    backdrop.addEventListener("click", closeModal);
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeModal();
     });
+
+    window.openWallpaperModal = openModal;
 }
 
 function setupAuthModal() {

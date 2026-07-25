@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import resend
 import random
@@ -21,6 +22,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+BASE_DIR = os.path.dirname(__file__)
+
+# Serve local wallpaper files directly so frontend can load images and downloads
+app.mount("/downloads", StaticFiles(directory=os.path.join(BASE_DIR, "downloads")), name="downloads")
+app.mount("/templates", StaticFiles(directory=os.path.join(BASE_DIR, "templates")), name="templates")
 
 # Fetch key safely from .env file
 resend.api_key = os.getenv("RESEND_API_KEY")
@@ -47,6 +54,31 @@ class AvailabilityRequest(BaseModel):
 @app.get("/")
 def home():
     return {"message": "Wallpaper Hub Server Running!"}
+
+# --- WALLPAPERS API ENDPOINT ---
+@app.get("/wallpapers")
+@app.get("/api/wallpapers")
+def get_wallpapers():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM wallpapers")
+    rows = cursor.fetchall()
+    conn.close()
+
+    wallpapers = []
+    for row in rows:
+        data = dict(row)
+        # Ensure the wallpaper response includes preview/download/appLink fields for the frontend
+        data["preview"] = data.get("preview") or data.get("image") or data.get("thumbnail") or data.get("download") or ""
+        data["image"] = data.get("image") or data.get("preview") or data.get("thumbnail") or ""
+        data["thumbnail"] = data.get("thumbnail") or data.get("preview") or data.get("image") or ""
+        data["download"] = data.get("download") or data.get("preview") or data.get("image") or ""
+        data["appLink"] = data.get("appLink") or data.get("preview") or data.get("download") or ""
+        wallpapers.append(data)
+
+    return wallpapers
+
 
 @app.post("/api/send-code")
 async def send_verification_code(data: CodeRequest):
@@ -189,4 +221,4 @@ def register_user(data: RegisterRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
