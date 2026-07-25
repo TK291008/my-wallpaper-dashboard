@@ -139,6 +139,63 @@ function setupAuthModal() {
     const sendCodeButton = document.getElementById('send-code-btn');
     const verificationStatus = document.getElementById('verification-status');
     const savedUsersList = document.getElementById('saved-users-list');
+    const registerUsernameInput = document.getElementById('register-username');
+    const registerEmailInput = document.getElementById('register-email');
+    const usernameFeedback = document.getElementById('username-field-feedback');
+    const emailFeedback = document.getElementById('email-field-feedback');
+    let resendTimer = null;
+    let availabilityTimer = null;
+    let usernameAvailable = true;
+    let emailAvailable = true;
+
+    const resetCodeButton = () => {
+        sendCodeButton.disabled = false;
+        sendCodeButton.style.opacity = '1';
+        sendCodeButton.style.cursor = 'pointer';
+        sendCodeButton.textContent = 'Send Verification Code';
+    };
+
+    const setFieldFeedback = (element, message, type = 'error') => {
+        if (!element) return;
+        element.textContent = message;
+        element.className = `field-feedback ${type}`;
+    };
+
+    const clearFieldFeedback = (element) => {
+        if (!element) return;
+        element.textContent = '';
+        element.className = 'field-feedback';
+    };
+
+    const updateCodeButtonState = () => {
+        const username = registerUsernameInput ? registerUsernameInput.value.trim() : '';
+        const email = registerEmailInput ? registerEmailInput.value.trim() : '';
+
+        if (!username || !email) {
+            sendCodeButton.disabled = true;
+            sendCodeButton.style.opacity = '0.5';
+            sendCodeButton.style.cursor = 'not-allowed';
+            sendCodeButton.textContent = 'Send Verification Code';
+            return;
+        }
+
+        if (usernameAvailable === false || emailAvailable === false) {
+            sendCodeButton.disabled = true;
+            sendCodeButton.style.opacity = '0.5';
+            sendCodeButton.style.cursor = 'not-allowed';
+            sendCodeButton.textContent = 'Unavailable';
+            return;
+        }
+
+        resetCodeButton();
+    };
+
+    const switchToSignIn = () => {
+        const signInTab = document.querySelector('.auth-tab[data-tab="signin"]');
+        if (signInTab) {
+            signInTab.click();
+        }
+    };
 
     const openAuthModal = () => {
         loginModal.classList.remove('hidden');
@@ -165,6 +222,104 @@ function setupAuthModal() {
         });
     });
 
+    const scheduleAvailabilityCheck = () => {
+        if (availabilityTimer) {
+            clearTimeout(availabilityTimer);
+        }
+
+        availabilityTimer = setTimeout(async () => {
+            const username = registerUsernameInput ? registerUsernameInput.value.trim() : '';
+            const email = registerEmailInput ? registerEmailInput.value.trim() : '';
+
+            if (!username && !email) {
+                clearFieldFeedback(usernameFeedback);
+                clearFieldFeedback(emailFeedback);
+                verificationStatus.textContent = 'A 6-digit code will be sent to your email.';
+                usernameAvailable = true;
+                emailAvailable = true;
+                updateCodeButtonState();
+                return;
+            }
+
+            sendCodeButton.disabled = true;
+            sendCodeButton.style.opacity = '0.5';
+            sendCodeButton.style.cursor = 'not-allowed';
+            sendCodeButton.textContent = 'Checking details...';
+            verificationStatus.textContent = 'Checking availability...';
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/check-availability', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email })
+                });
+
+                const result = await response.json().catch(() => ({}));
+
+                usernameAvailable = result.usernameAvailable !== false;
+                emailAvailable = result.emailAvailable !== false;
+
+                if (username && result.usernameMessage) {
+                    setFieldFeedback(usernameFeedback, result.usernameMessage, 'error');
+                } else if (username) {
+                    clearFieldFeedback(usernameFeedback);
+                }
+
+                if (!username && !email) {
+                    clearFieldFeedback(usernameFeedback);
+                    clearFieldFeedback(emailFeedback);
+                }
+
+                if (email) {
+                    if (result.emailMessage) {
+                        const message = result.emailMessage.includes('already registered')
+                            ? `${result.emailMessage} <span class="field-feedback-link" data-action="signin">Sign in</span>`
+                            : result.emailMessage;
+                        emailFeedback.innerHTML = message;
+                        emailFeedback.className = 'field-feedback error';
+                        const signInLink = emailFeedback.querySelector('[data-action="signin"]');
+                        if (signInLink) {
+                            signInLink.addEventListener('click', (event) => {
+                                event.preventDefault();
+                                switchToSignIn();
+                            });
+                        }
+                    } else {
+                        clearFieldFeedback(emailFeedback);
+                    }
+                }
+
+                if (!response.ok) {
+                    verificationStatus.textContent = 'Unable to verify availability right now.';
+                    updateCodeButtonState();
+                    return;
+                }
+
+                verificationStatus.textContent = usernameAvailable && emailAvailable
+                    ? 'Looks good. You can request a verification code.'
+                    : 'Please choose a different username or email.';
+                updateCodeButtonState();
+            } catch (err) {
+                console.error(err);
+                verificationStatus.textContent = 'Unable to verify availability right now.';
+                usernameAvailable = true;
+                emailAvailable = true;
+                updateCodeButtonState();
+            }
+        }, 400);
+    };
+
+    [registerUsernameInput, registerEmailInput].forEach((input) => {
+        if (input) {
+            input.addEventListener('input', () => {
+                if (input === registerUsernameInput) {
+                    clearFieldFeedback(emailFeedback);
+                }
+                scheduleAvailabilityCheck();
+            });
+        }
+    });
+
     signinForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const username = document.getElementById('signin-username').value.trim();
@@ -186,25 +341,27 @@ function setupAuthModal() {
 
     sendCodeButton.addEventListener('click', async () => {
         const emailInput = document.getElementById('register-email');
-        const email = emailInput ? emailInput.value.trim() : '';
+        const usernameInput = document.getElementById('register-username');
 
-        if (!email) {
-            alert("Please enter a valid email address first!");
+        const email = emailInput ? emailInput.value.trim() : '';
+        const username = usernameInput ? usernameInput.value.trim() : '';
+
+        if (!email || !username) {
+            alert("Please enter both your username and email address first!");
             return;
         }
 
-        // Immediately lock button & update state
         sendCodeButton.disabled = true;
         sendCodeButton.style.opacity = '0.5';
         sendCodeButton.style.cursor = 'not-allowed';
-        sendCodeButton.textContent = "Sending email...";
+        sendCodeButton.textContent = "Checking details...";
         verificationStatus.textContent = "Connecting to mail server...";
 
         try {
             const response = await fetch('http://127.0.0.1:8000/api/send-code', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email })
+                body: JSON.stringify({ email, username })
             });
 
             const result = await response.json();
@@ -212,7 +369,6 @@ function setupAuthModal() {
             if (response.ok) {
                 verificationStatus.textContent = `✅ Verification code sent to ${email}. Check your Inbox/Spam!`;
                 
-                // 30-second countdown loop
                 let countdown = 30;
                 sendCodeButton.textContent = `Resend in ${countdown}s`;
 
@@ -230,7 +386,8 @@ function setupAuthModal() {
                 }, 1000);
 
             } else {
-                alert(`Error: ${result.detail || "Failed to send code"}`);
+                alert(`⚠️ ${result.detail || "Failed to send code"}`);
+                verificationStatus.textContent = "";
                 sendCodeButton.disabled = false;
                 sendCodeButton.style.opacity = '1';
                 sendCodeButton.style.cursor = 'pointer';
@@ -282,7 +439,14 @@ function setupAuthModal() {
                 updateUserBadge();
                 closeAuthModal();
             } else {
-                alert(`❌ Registration Failed: ${result.detail}`);
+                const detail = result.detail || 'Unable to complete registration.';
+                if (/already registered|already in use|already taken/i.test(detail)) {
+                    setFieldFeedback(usernameFeedback, 'This username already exists.', 'error');
+                    setFieldFeedback(emailFeedback, 'This email is already in use.', 'error');
+                    alert('This username or email already exists. Please choose a different one.');
+                } else {
+                    alert(`❌ Registration Failed: ${detail}`);
+                }
             }
         } catch (err) {
             console.error(err);
@@ -354,12 +518,7 @@ async function ensureSeedUsers() {
         return;
     }
 
-    const defaultUsers = [
-        { username: 'Tharun', email: 'tharun@example.com', passwordHash: await hashPassword('Tharun@123'), isVerified: true },
-        { username: 'Alex', email: 'alex@example.com', passwordHash: await hashPassword('Alex@123'), isVerified: true },
-    ];
-
-    localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(defaultUsers));
+    localStorage.setItem(STORAGE_KEYS.users, JSON.stringify([]));
 }
 
 function getStoredUsers() {
