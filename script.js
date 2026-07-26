@@ -103,8 +103,8 @@ function renderWallpapers(items) {
         card.className = 'wallpaper-card';
         card.dataset.id = wallpaper.id;
         card.innerHTML = `
-            <div class="card-thumbnail" style="width:100%;height:180px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;border-radius:12px;">
-                <img class="card-thumb" src="${thumbnailUrl}" alt="${wallpaper.title || 'Wallpaper preview'}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.onerror=null; this.src='${CARD_PLACEHOLDER_SVG}';" />
+            <div class="card-thumbnail" style="width:100%;aspect-ratio:16/9;background:#0f172a;display:flex;align-items:center;justify-content:center;border-radius:12px;overflow:hidden;flex-shrink:0;">
+                <img class="card-thumb" src="${thumbnailUrl}" alt="${wallpaper.title || 'Wallpaper preview'}" style="width:100%;height:100%;display:block;object-fit:cover;object-position:center;"
             </div>
             <div class="card-content">
                 <div class="card-meta">
