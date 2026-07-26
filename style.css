@@ -31,24 +31,6 @@ a {
   font: inherit;
 }
 
-.card-thumbnail {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    background: #0f172a;
-    border-radius: 12px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.card-thumb {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    display: block;
-}
 
 .app-shell {
   display: grid;
