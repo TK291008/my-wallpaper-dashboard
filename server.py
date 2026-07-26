@@ -51,6 +51,9 @@ class AvailabilityRequest(BaseModel):
     username: str
     email: str
 
+class WallpaperAction(BaseModel):
+    wallpaper_id: int
+
 @app.get("/")
 def home():
     return {"message": "Wallpaper Hub Server Running!"}
@@ -79,6 +82,35 @@ def get_wallpapers():
 
     return wallpapers
 
+@app.post("/api/view")
+def increment_view(data: WallpaperAction):
+    with sqlite3.connect(DB_FILE, timeout=10) as conn:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            UPDATE wallpapers
+            SET views = views + 1
+            WHERE id = ?
+            """,
+            (data.wallpaper_id,)
+        )
+
+        cursor.execute(
+            """
+            SELECT views
+            FROM wallpapers
+            WHERE id = ?
+            """,
+            (data.wallpaper_id,)
+        )
+
+        row = cursor.fetchone()
+
+    return {
+        "success": True,
+        "views": row[0] if row else 0
+    }
 
 @app.post("/api/send-code")
 async def send_verification_code(data: CodeRequest):

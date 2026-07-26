@@ -1,3 +1,5 @@
+console.log("🚀 Main gallery script loaded");
+
 let wallpapers = [];
 let activeCategory = 'all';
 let currentUser = null;
@@ -99,6 +101,7 @@ function renderWallpapers(items) {
 
         const card = document.createElement('div');
         card.className = 'wallpaper-card';
+        card.dataset.id = wallpaper.id;
         card.innerHTML = `
             <div class="card-thumbnail" style="width:100%;height:180px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;border-radius:12px;">
                 <img class="card-thumb" src="${thumbnailUrl}" alt="${wallpaper.title || 'Wallpaper preview'}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.onerror=null; this.src='${CARD_PLACEHOLDER_SVG}';" />
@@ -111,9 +114,9 @@ function renderWallpapers(items) {
                 <h3>${wallpaper.title}</h3>
                 <p class="card-author">By ${wallpaper.author || 'Unknown'}</p>
                 <div class="stats-row">
-                    <span>❤️ ${wallpaper.likes || 0}</span>
-                    <span>⬇️ ${wallpaper.installs || 0}</span>
-                    <span>👁 ${wallpaper.views || 0}</span>
+                    <span class="like-count">❤️ ${wallpaper.likes || 0}</span>
+                    <span class="download-count">⬇️ ${wallpaper.downloads || 0}</span>
+                    <span class="view-count">👁 ${wallpaper.views || 0}</span>
                 </div>
                 <div class="card-actions">
                     <button class="btn preview-btn" data-id="${wallpaper.id}" type="button">Preview</button>
@@ -174,6 +177,35 @@ function setupPreviewModal() {
 
     function openModal(wallpaper) {
 
+        console.log("OpenModal called", wallpaper);
+        console.log("Sending view request ...");
+        console.log(`${BACKEND_BASE}/api/view`);
+        
+        fetch(`${BACKEND_BASE}/api/view`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                wallpaper_id: wallpaper.id
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            wallpaper.views = data.views;
+
+            const viewElement = document.querySelector(
+                `[data-id="${wallpaper.id}"] .view-count`
+            );
+
+            if (viewElement) {
+                viewElement.textContent = `👁 ${data.views}`;
+            }
+        })
+        .catch(console.error);
+        // ===== END NEW CODE =====
+
+
         modalTitle.textContent = wallpaper.title || "";
         modalType.textContent =
             `${wallpaper.type || "Wallpaper"} • ${wallpaper.category || ""}`;
@@ -210,31 +242,31 @@ function setupPreviewModal() {
         } else if (/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(previewPath)) {
 
             iframe.srcdoc = `
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-html,body{
-margin:0;
-height:100%;
-display:flex;
-align-items:center;
-justify-content:center;
-background:#111;
-overflow:hidden;
-}
-img{
-max-width:100%;
-max-height:100%;
-object-fit:contain;
-}
-</style>
-</head>
-<body>
-<img src="${url}">
-</body>
-</html>
-`;
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+    html,body{
+    margin:0;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#111;
+    overflow:hidden;
+    }
+    img{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    }
+    </style>
+    </head>
+    <body>
+    <img src="${url}">
+    </body>
+    </html>
+    `;
 
         } else {
 
