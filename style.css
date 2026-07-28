@@ -139,10 +139,11 @@ a {
 }
 
 .card-image {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  display: block;
+    width: 100%
+    aspect-ratio: 16 / 9;
+    height: auto;
+    object-fit: cover;
+    display: block;
 }
 
 .card-body {
@@ -213,14 +214,16 @@ a {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 18px;
-  align-items: center;
+  align-items: stretch;
 }
 
 .modal-image {
-  width: 100%;
-  min-height: 260px;
-  object-fit: cover;
-  border-radius: 16px;
+    width: 100%;
+    height: 65vh;
+    min-height: 500px;
+    border: none;
+    border-radius: 16px;
+    background: #111;
 }
 
 .modal-body h3 {

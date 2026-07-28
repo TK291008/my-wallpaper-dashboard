@@ -103,27 +103,46 @@ function renderWallpapers(items) {
         card.className = 'wallpaper-card';
         card.dataset.id = wallpaper.id;
         card.innerHTML = `
-            <div class="card-thumbnail" style="width:100%;aspect-ratio:16/9;background:#0f172a;display:flex;align-items:center;justify-content:center;border-radius:12px;overflow:hidden;flex-shrink:0;">
-                <img class="card-thumb" src="${thumbnailUrl}" alt="${wallpaper.title || 'Wallpaper preview'}" style="width:100%;height:100%;display:block;object-fit:cover;object-position:center;"
+            <div class="card-thumbnail" style="width:100%;height:180px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;border-radius:12px;">
+                <img
+                    class="card-thumb"
+                    src="${thumbnailUrl}"
+                    alt="${wallpaper.title || 'Wallpaper preview'}"
+                    style="width:100%;height:100%;object-fit:cover;display:block;"
+                    onerror="this.onerror=null; this.src='${CARD_PLACEHOLDER_SVG}';"
+                />
             </div>
+
             <div class="card-content">
                 <div class="card-meta">
                     <span class="pill">${wallpaper.type || 'Wallpaper'}</span>
                     <span class="pill secondary">${wallpaper.category || 'General'}</span>
                 </div>
+
                 <h3>${wallpaper.title}</h3>
-                <p class="card-author">By ${wallpaper.author || 'Unknown'}</p>
+
+                <p class="card-author">
+                    By ${wallpaper.author || 'Unknown'}
+                </p>
+
                 <div class="stats-row">
                     <span class="like-count">❤️ ${wallpaper.likes || 0}</span>
                     <span class="download-count">⬇️ ${wallpaper.downloads || 0}</span>
                     <span class="view-count">👁 ${wallpaper.views || 0}</span>
                 </div>
+
                 <div class="card-actions">
-                    <button class="btn preview-btn" data-id="${wallpaper.id}" type="button">Preview</button>
-                    <a class="btn secondary-link" href="#" target="_blank" rel="noreferrer">Download</a>
+                    <button class="btn preview-btn" data-id="${wallpaper.id}" type="button">
+                        Preview
+                    </button>
+
+                    <a class="btn secondary-link" href="#" target="_blank" rel="noreferrer">
+                        Download
+                    </a>
                 </div>
             </div>
         `;
+        
         const previewButton = card.querySelector(".preview-btn");
 
         previewButton.addEventListener("click", (e) => {
@@ -180,7 +199,7 @@ function setupPreviewModal() {
         console.log("OpenModal called", wallpaper);
         console.log("Sending view request ...");
         console.log(`${BACKEND_BASE}/api/view`);
-        
+        /*
         fetch(`${BACKEND_BASE}/api/view`, {
             method: "POST",
             headers: {
@@ -203,7 +222,7 @@ function setupPreviewModal() {
             }
         })
         .catch(console.error);
-        // ===== END NEW CODE =====
+        */
 
 
         modalTitle.textContent = wallpaper.title || "";
@@ -281,7 +300,11 @@ function setupPreviewModal() {
 
     closeButton.addEventListener("click", closeModal);
 
-    backdrop.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+        if (e.target === backdrop) {
+            closeModal();
+        }
+    });
 
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") closeModal();
