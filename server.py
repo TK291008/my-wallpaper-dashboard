@@ -112,6 +112,30 @@ def increment_view(data: WallpaperAction):
         "views": row[0] if row else 0
     }
 
+@app.post("/api/download")
+def increment_download(data: WallpaperAction):
+    with sqlite3.connect(DB_FILE, timeout=10) as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE wallpapers
+            SET downloads = downloads + 1
+            WHERE id = ?
+        """, (data.wallpaper_id,))
+
+        cursor.execute("""
+            SELECT downloads
+            FROM wallpapers
+            WHERE id = ?
+        """, (data.wallpaper_id,))
+
+        row = cursor.fetchone()
+
+    return {
+        "success": True,
+        "downloads": row[0] if row else 0
+    }
+
 @app.post("/api/send-code")
 async def send_verification_code(data: CodeRequest):
     email_clean = (data.email or "").strip().lower()

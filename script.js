@@ -1,4 +1,8 @@
-console.log("🚀 Main gallery script loaded");
+window.addEventListener("beforeunload", () => {
+    console.error("🚨 PAGE IS UNLOADING");
+});
+
+console.trace       ("🚀 Main gallery script loaded");
 
 let wallpapers = [];
 let activeCategory = 'all';
@@ -93,27 +97,41 @@ function renderWallpapers(items) {
     }
 
     items.forEach((wallpaper) => {
+
         const previewCandidate = wallpaper.preview || wallpaper.image || wallpaper.thumbnail || '';
         const interactiveThumbnail = getInteractiveThumbnail(wallpaper);
         const hasStaticPreview = /\.(?:jpeg|jpg|gif|png|webp)(?:$|\?)/i;
-        const thumbnailPath = wallpaper.thumbnail || wallpaper.image || interactiveThumbnail || (hasStaticPreview.test(previewCandidate) ? previewCandidate : '') || wallpaper.download || previewCandidate || wallpaper.appLink || '';
-        const thumbnailUrl = thumbnailPath ? getFullUrl(thumbnailPath) : CARD_PLACEHOLDER_SVG;
+
+        const thumbnailPath =
+            wallpaper.thumbnail ||
+            wallpaper.image ||
+            interactiveThumbnail ||
+            (hasStaticPreview.test(previewCandidate) ? previewCandidate : '') ||
+            wallpaper.download ||
+            previewCandidate ||
+            wallpaper.appLink ||
+            '';
+
+        const thumbnailUrl = thumbnailPath
+            ? getFullUrl(thumbnailPath)
+            : CARD_PLACEHOLDER_SVG;
 
         const card = document.createElement('div');
         card.className = 'wallpaper-card';
         card.dataset.id = wallpaper.id;
+
         card.innerHTML = `
-            <div class="card-thumbnail" style="width:100%;height:180px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;border-radius:12px;">
+            <div class="card-thumbnail">
                 <img
                     class="card-thumb"
                     src="${thumbnailUrl}"
                     alt="${wallpaper.title || 'Wallpaper preview'}"
-                    style="width:100%;height:100%;object-fit:cover;display:block;"
                     onerror="this.onerror=null; this.src='${CARD_PLACEHOLDER_SVG}';"
                 />
             </div>
 
             <div class="card-content">
+
                 <div class="card-meta">
                     <span class="pill">${wallpaper.type || 'Wallpaper'}</span>
                     <span class="pill secondary">${wallpaper.category || 'General'}</span>
@@ -126,33 +144,97 @@ function renderWallpapers(items) {
                 </p>
 
                 <div class="stats-row">
-                    <span class="like-count">❤️ ${wallpaper.likes || 0}</span>
-                    <span class="download-count">⬇️ ${wallpaper.downloads || 0}</span>
-                    <span class="view-count">👁 ${wallpaper.views || 0}</span>
+                    <span class="like-count">
+                        ❤️ ${wallpaper.likes || 0}
+                    </span>
+
+                    <span class="download-count" data-id="${wallpaper.id}">
+                        ⬇️ ${wallpaper.downloads || 0}
+                    </span>
+
+                    <span class="view-count">
+                        👁 ${wallpaper.views || 0}
+                    </span>
                 </div>
 
                 <div class="card-actions">
-                    <button class="btn preview-btn" data-id="${wallpaper.id}" type="button">
+                    <button
+                        class="btn preview-btn"
+                        data-id="${wallpaper.id}"
+                        type="button">
                         Preview
                     </button>
 
-                    <a class="btn secondary-link" href="#" target="_blank" rel="noreferrer">
-                        Download
+                    <a
+                        class="btn secondary-link"
+                        href="#"
+                        target="_blank"
+                        rel="noreferrer">
+                        Download    
                     </a>
                 </div>
+
             </div>
         `;
-        
+
+        // Preview button
         const previewButton = card.querySelector(".preview-btn");
 
         previewButton.addEventListener("click", (e) => {
             e.preventDefault();
-            window.openWallpaperModal(wallpaper);
+            e.stopPropagation();
+
+            console.log("1 - Button clicked");
+            console.log("2 - openWallpaperModal =", window.openWallpaperModal);
+
+            try {
+                window.openWallpaperModal(wallpaper);
+                console.log("3 - openWallpaperModal returned");
+            } catch (err) {
+                console.error("ERROR:", err);
+            }
+
+            console.log("4 - End of click");
         });
 
-        const downloadLink = card.querySelector('.secondary-link');
+        // Download button
+        const downloadLink = card.querySelector(".secondary-link");
+
         if (downloadLink) {
-            downloadLink.href = getFullUrl(wallpaper.download || wallpaper.preview || wallpaper.image || '');
+
+            downloadLink.href = getFullUrl(
+                wallpaper.download ||
+                wallpaper.preview ||
+                wallpaper.image ||
+                ""
+            );
+
+            downloadLink.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                fetch(`${BACKEND_BASE}/api/download`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        wallpaper_id: wallpaper.id
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+
+                    wallpaper.downloads = data.downloads;
+
+                    card.querySelector(".download-count").textContent =
+                        `⬇️ ${data.downloads}`;
+
+                })
+                .catch(console.error);
+
+            });
+
         }
 
         gallery.appendChild(card);
@@ -186,6 +268,9 @@ function setupPreviewModal() {
     const appLink = document.getElementById("app-link");
 
     function closeModal() {
+
+        console.trace("CloseModal called");
+
         modal.classList.add("hidden");
         modal.classList.remove("active");
         modal.setAttribute("aria-hidden", "true");
@@ -196,10 +281,10 @@ function setupPreviewModal() {
 
     function openModal(wallpaper) {
 
-        console.log("OpenModal called", wallpaper);
+        console.trace("OpenModal called", wallpaper);
         console.log("Sending view request ...");
         console.log(`${BACKEND_BASE}/api/view`);
-        /*
+
         fetch(`${BACKEND_BASE}/api/view`, {
             method: "POST",
             headers: {
@@ -222,7 +307,7 @@ function setupPreviewModal() {
             }
         })
         .catch(console.error);
-        */
+        
 
 
         modalTitle.textContent = wallpaper.title || "";
@@ -236,6 +321,7 @@ function setupPreviewModal() {
             "";
 
         const url = getFullUrl(previewPath);
+        console.log("Preview URL:", url);
 
         downloadLink.href = getFullUrl(
             wallpaper.download ||
