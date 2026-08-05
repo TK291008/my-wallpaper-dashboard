@@ -268,6 +268,7 @@ function setupPreviewModal() {
     const appLink = document.getElementById("app-link");
 
     function closeModal() {
+        alert("closeModal() was called!");
 
         console.trace("CloseModal called");
 
@@ -339,9 +340,14 @@ function setupPreviewModal() {
         );
 
         iframe.removeAttribute("srcdoc");
-
+        
         if (/\.(html?|php)$/i.test(previewPath)) {
 
+            console.log("Loading iframe:", url);
+            iframe.onload = () => {
+                console.log("✅ iframe finished loading");
+            };
+            
             iframe.src = url;
 
         } else if (/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(previewPath)) {
