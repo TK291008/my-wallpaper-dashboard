@@ -25,6 +25,11 @@ const BACKEND_BASE =
 function getFullUrl(path) {
     if (!path) return '#';
     if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(path)) return path;
+
+    if (window.location.protocol === 'file:' || /^(templates|downloads)\//.test(path)) {
+        return path;
+    }
+
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
     return `${BACKEND_BASE}/${cleanPath}`;
 }
@@ -58,20 +63,44 @@ const CARD_PLACEHOLDER_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURICompon
 )}`;
 
 async function initGallery() {
+    let data = [];
+
     try {
         const response = await fetch(`${getFullUrl('wallpapers')}`);
-        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`Backend request failed with status ${response.status}`);
+        }
+        data = await response.json();
         wallpapers = Array.isArray(data) ? data : [];
-        setupPreviewModal();
-        renderWallpapers(getFilteredWallpapers());
-        setupCategoryFilters();
-        await ensureSeedUsers();
-        setupAuthModal();
-        restoreUserSession();
+        console.log('Loaded wallpapers from backend', wallpapers.length);
     } catch (error) {
         console.error('Error loading wallpapers from backend:', error);
-        document.getElementById('gallery').innerHTML = '<p class="empty-state">Unable to load wallpaper data</p>';
+
+        if (Array.isArray(window.FALLBACK_WALLPAPERS) && window.FALLBACK_WALLPAPERS.length) {
+            wallpapers = window.FALLBACK_WALLPAPERS;
+            console.log('Loaded wallpapers from embedded fallback', wallpapers.length);
+        } else {
+            try {
+                const fallbackResponse = await fetch('wallpapers.json');
+                if (!fallbackResponse.ok) {
+                    throw new Error(`Local fallback request failed with status ${fallbackResponse.status}`);
+                }
+                const fallbackData = await fallbackResponse.json();
+                wallpapers = Array.isArray(fallbackData) ? fallbackData : [];
+                console.log('Loaded wallpapers from local fallback file', wallpapers.length);
+            } catch (fallbackError) {
+                console.error('Error loading wallpapers from local fallback:', fallbackError);
+                wallpapers = [];
+            }
+        }
     }
+
+    setupPreviewModal();
+    renderWallpapers(getFilteredWallpapers());
+    setupCategoryFilters();
+    await ensureSeedUsers();
+    setupAuthModal();
+    restoreUserSession();
 }
 
 function getFilteredWallpapers() {
@@ -268,8 +297,6 @@ function setupPreviewModal() {
     const appLink = document.getElementById("app-link");
 
     function closeModal() {
-        alert("closeModal() was called!");
-
         console.trace("CloseModal called");
 
         modal.classList.add("hidden");
@@ -316,13 +343,12 @@ function setupPreviewModal() {
             `${wallpaper.type || "Wallpaper"} • ${wallpaper.category || ""}`;
 
         const previewPath =
-            wallpaper.appLink ||
             wallpaper.preview ||
             wallpaper.image ||
             "";
-
-        const url = getFullUrl(previewPath);
-        console.log("Preview URL:", url);
+        const appPath = wallpaper.appLink || "";
+        const previewUrl = getFullUrl(previewPath || appPath);
+        console.log("Preview URL:", previewUrl);
 
         downloadLink.href = getFullUrl(
             wallpaper.download ||
@@ -331,27 +357,60 @@ function setupPreviewModal() {
             ""
         );
 
-        previewLink.href = url;
-        appLink.href = getFullUrl(
-            wallpaper.appLink ||
-            wallpaper.preview ||
-            wallpaper.image ||
-            ""
-        );
+        previewLink.href = getFullUrl(previewPath || appPath);
+        appLink.href = appPath
+            ? getFullUrl(appPath)
+            : getFullUrl(previewPath || "");
 
         iframe.removeAttribute("srcdoc");
         
-        if (/\.(html?|php)$/i.test(previewPath)) {
-
-            console.log("Loading iframe:", url);
+        if (!previewPath && appPath) {
+            iframe.srcdoc = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+    html,body{
+    margin:0;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#111;
+    color:#fff;
+    font-family:system-ui, sans-serif;
+    text-align:center;
+    padding:24px;
+    }
+    </style>
+    </head>
+    <body>
+    <div>
+      <h2>No browser preview available</h2>
+      <p>This wallpaper can only be opened through the app link.</p>
+      <p>Use the "Open in App" button instead.</p>
+    </div>
+    </body>
+    </html>
+    `;
+        } else if (/\.(html?|php)$/i.test(previewPath)) {
+            console.log("Loading iframe as srcdoc for local HTML preview:", previewUrl);
             iframe.onload = () => {
                 console.log("✅ iframe finished loading");
             };
-            
-            iframe.src = url;
-
+            iframe.srcdoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview</title>
+<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111;}iframe{border:none;width:100%;height:100%;}</style>
+</head>
+<body>
+<iframe src="${previewUrl}" style="border:none;width:100%;height:100%;"></iframe>
+</body>
+</html>`;
         } else if (/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(previewPath)) {
-
             iframe.srcdoc = `
     <!DOCTYPE html>
     <html>
@@ -374,15 +433,12 @@ function setupPreviewModal() {
     </style>
     </head>
     <body>
-    <img src="${url}">
+    <img src="${previewUrl}">
     </body>
     </html>
     `;
-
         } else {
-
-            iframe.src = url;
-
+            iframe.src = previewUrl;
         }
 
         modal.classList.remove("hidden");
